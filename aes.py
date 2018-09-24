@@ -1,6 +1,10 @@
 import sys
 import getopt
+from collections import deque
 
+ENCRYPT = 0
+DECRYPT = 1
+NB = 4  # number of columns comprising the state
 SBOX = (
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
@@ -50,9 +54,9 @@ def main(argv):
             outputFile = open(arg, "wb")
         elif opt == "--mode":
             if arg in ("encrypt", "e", "0"):
-                mode = 0
+                mode = ENCRYPT
             elif arg in ("decrypt", "d", "1"):
-                mode = 1
+                mode = DECRYPT
 
     # do stuff with parameters
     state = inputToState(inputFile)
@@ -89,8 +93,19 @@ def subBytes(state):
     subBytesState = state
 
 
-def shiftRows():
-    pass
+def shiftRows(state, mode):
+    newState = [state[0]]  # don't need to shift row 0
+
+    # newState[x] <- state[x] shifted by x bytes
+    for x in range(1,4):
+        row = deque(state[x])
+        if mode is ENCRYPT:
+            row.rotate(-x)  # shift left
+        elif mode is DECRYPT:
+            row.rotate(x)   # shift right
+        newState.append(bytes(row))
+
+    return newState
 
 
 def mixColumns():
