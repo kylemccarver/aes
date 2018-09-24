@@ -105,25 +105,25 @@ def subBytes(state, mode):
 
 
 def shiftRows(state, mode):
-    newState = [state[0]]  # don't need to shift row 0
+    shiftRowsState = [state[0]]  # don't need to shift row 0
 
-    # newState[x] <- state[x] shifted by x bytes
+    # shiftRowsState[x] <- state[x] shifted by x bytes
     for x in range(1,4):
         row = deque(state[x])
         if mode == ENCRYPT:
             row.rotate(-x)  # shift left
         elif mode == DECRYPT:
             row.rotate(x)   # shift right
-        newState.append(bytes(row))
+        shiftRowsState.append(bytes(row))
 
-    return newState
+    return shiftRowsState
 
 
-def mixColumns():
+def mixColumns(state, mode):
     pass
 
 
-def addRoundKey():
+def addRoundKey(state, mode):
     pass
 
 if __name__ == "__main__":
