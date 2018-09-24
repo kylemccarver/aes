@@ -1,7 +1,7 @@
 import sys
 import getopt
 
-NB = 4 # number of columns comprising the state
+NB = 4  # number of columns comprising the state
 SBOX = (
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
     0xCA, 0x82, 0xC9, 0x7D, 0xFA, 0x59, 0x47, 0xF0, 0xAD, 0xD4, 0xA2, 0xAF, 0x9C, 0xA4, 0x72, 0xC0,
@@ -91,12 +91,15 @@ def subBytes(state):
 
 
 def shiftRows(state):
-    newState = [state[0]] # don't need to shift row 0
-    from collections import deque # deque object used to simplify shifting
+    newState = [state[0]]  # don't need to shift row 0
+    from collections import deque  # deque object used to simplify shifting
+
+    # newState[x] <- state[x] shifted left by x bytes
     for x in range(1,4):
         row = deque(state[x])
-        row.rotate(-x) # shifts row left by x bytes
+        row.rotate(-x)
         newState += list(row)
+
     return newState
 
 
