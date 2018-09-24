@@ -1,9 +1,9 @@
 import sys
 import getopt
+from enum import Enum
 from collections import deque
 
-ENCRYPT = 0
-DECRYPT = 1
+Mode = Enum('Mode', 'ENCRYPT DECRYPT')
 NB = 4  # number of columns comprising the state
 SBOX = (
     0x63, 0x7C, 0x77, 0x7B, 0xF2, 0x6B, 0x6F, 0xC5, 0x30, 0x01, 0x67, 0x2B, 0xFE, 0xD7, 0xAB, 0x76,
@@ -54,14 +54,23 @@ def main(argv):
             outputFile = open(arg, "wb")
         elif opt == "--mode":
             if arg in ("encrypt", "e", "0"):
-                mode = ENCRYPT
+                mode = Mode.ENCRYPT
             elif arg in ("decrypt", "d", "1"):
-                mode = DECRYPT
+                mode = Mode.DECRYPT
 
     # do stuff with parameters
     state = inputToState(inputFile)
-    subBytesState = subBytes(state, mode)
-
+    if mode is Mode.ENCRYPT:
+        state = subBytes(state, mode)
+        state = shiftRows(state, mode)
+        state = mixColumns(state, mode)
+        state = addRoundKey(state, mode)
+    elif mode is Mode.DECRYPT:
+        state = addRoundKey(state, mode)
+        state = mixColumns(state, mode)
+        state = shiftRows(state, mode)
+        state = subBytes(state, mode)
+    print(state)
 
 def inputToState(input):
     inputBytes = []
@@ -105,26 +114,30 @@ def subBytes(state, mode):
 
 
 def shiftRows(state, mode):
-    shiftRowsState = [state[0]]  # don't need to shift row 0
+    shiftRowsState = []
+    for block in state:
+        newBlock = [block[0]]  # don't need to shift row 0
 
-    # shiftRowsState[x] <- state[x] shifted by x bytes
-    for x in range(1,4):
-        row = deque(state[x])
-        if mode == ENCRYPT:
-            row.rotate(-x)  # shift left
-        elif mode == DECRYPT:
-            row.rotate(x)   # shift right
-        shiftRowsState.append(bytes(row))
+        # newBlock[x] <- block[x] shifted by x bytes
+        for x in range(1,4):
+            row = deque(block[x])
+            if mode is Mode.ENCRYPT:
+                row.rotate(-x)  # shift left
+            elif mode is Mode.DECRYPT:
+                row.rotate(x)   # shift right
+            newBlock.append(bytes(row))
+
+        shiftRowsState.append(newBlock)
 
     return shiftRowsState
 
 
 def mixColumns(state, mode):
-    pass
+    return state
 
 
 def addRoundKey(state, mode):
-    pass
+    return state
 
 if __name__ == "__main__":
     main(sys.argv[1:])
