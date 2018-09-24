@@ -1,6 +1,7 @@
 import sys
 import getopt
 
+NB = 4
 
 def main(argv):
     # keySize will be either 128 or 256
@@ -42,8 +43,14 @@ def subBytes():
     pass
 
 
-def shiftRows():
-    pass
+def shiftRows(state):
+    newState = [state[0]] # don't need to shift row 0
+    from collections import deque # deque object used to simplify shifting
+    for x in range(1,4):
+        row = deque(state[x])
+        row.rotate(-x) # shifts row left by x bytes
+        newState += list(row)
+    return newState
 
 
 def mixColumns():
