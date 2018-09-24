@@ -98,7 +98,7 @@ def shiftRows(state):
     for x in range(1,4):
         row = deque(state[x])
         row.rotate(-x)
-        newState += list(row)
+        newState.append(bytes(row))
 
     return newState
 
