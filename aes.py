@@ -56,6 +56,7 @@ def main(argv):
 
     # do stuff with parameters
     state = inputToState(inputFile)
+    subBytesState = subBytes(state, mode)
 
 
 def inputToState(input):
@@ -69,7 +70,7 @@ def inputToState(input):
     if len(inputBytes) % 16 != 0:
         remainder = 16 - len(inputBytes)
         for i in range(remainder):
-            inputBytes.append(remainder)
+            inputBytes.append(remainder.to_bytes(1, "big"))
 
     numberOfBlocks = int(len(inputBytes) / 16)
     inputIndex = 0
@@ -85,8 +86,18 @@ def inputToState(input):
     return state
 
 
-def subBytes(state):
+def subBytes(state, mode):
     subBytesState = state
+    for block in subBytesState:
+        for row in block:
+            for i in range(4):
+                byte = row[i]
+                rowIndex = (ord(byte) & 0xF0) >> 4
+                colIndex = (ord(byte) & 0x0F)
+
+                row[i] = SBOX[rowIndex * 16 + colIndex].to_bytes(1, "big")
+
+    return subBytesState
 
 
 def shiftRows():
