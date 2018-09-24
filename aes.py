@@ -1,5 +1,6 @@
 import sys
 import getopt
+from collections import deque
 
 NB = 4  # number of columns comprising the state
 SBOX = (
@@ -92,7 +93,6 @@ def subBytes(state):
 
 def shiftRows(state):
     newState = [state[0]]  # don't need to shift row 0
-    from collections import deque  # deque object used to simplify shifting
 
     # newState[x] <- state[x] shifted left by x bytes
     for x in range(1,4):
