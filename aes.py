@@ -99,9 +99,9 @@ def shiftRows(state, mode):
     # newState[x] <- state[x] shifted by x bytes
     for x in range(1,4):
         row = deque(state[x])
-        if mode is ENCRYPT:
+        if mode == ENCRYPT:
             row.rotate(-x)  # shift left
-        elif mode is DECRYPT:
+        elif mode == DECRYPT:
             row.rotate(x)   # shift right
         newState.append(bytes(row))
 
