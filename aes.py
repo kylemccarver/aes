@@ -1,7 +1,7 @@
 import sys
 import getopt
 
-NB = 4
+NB = 4 # number of columns comprising the state
 
 def main(argv):
     # keySize will be either 128 or 256
