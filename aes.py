@@ -161,5 +161,19 @@ def mixColumns(state, mode):
 def addRoundKey(state, mode):
     return state
 
+
+def xor(wordA, wordB):
+    return [byteA ^ byteB for (byteA, byteB) in zip(wordA, wordB)]
+
+
+def nextRoundKey(prevKey):
+    w0 = None
+
+    w1 = xor(w0, prevKey[1])
+    w2 = xor(w1, prevKey[2])
+    w3 = xor(w2, prevKey[3])
+    return [w0, w1, w2, w3]
+
+
 if __name__ == "__main__":
     main(sys.argv[1:])
