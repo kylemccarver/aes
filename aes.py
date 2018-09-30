@@ -43,6 +43,8 @@ SBOX_INV = (
     0x17, 0x2B, 0x04, 0x7E, 0xBA, 0x77, 0xD6, 0x26, 0xE1, 0x69, 0x14, 0x63, 0x55, 0x21, 0x0C, 0x7D
 )
 
+RC = (0x00, 0x01, 0x02, 0x04, 0x08, 0x10, 0x20, 0x40, 0x80, 0x1b, 0x36, 0x6c, 0xd8, 0xab, 0x4d)
+
 
 def main(argv):
     # keySize will be either 128 or 256
@@ -122,17 +124,21 @@ def subBytes(state, mode):
     subBytesState = state
     for block in subBytesState:
         for row in block:
-            for i in range(4):
-                byte = row[i]
-                rowIndex = (ord(byte) & 0xF0) >> 4
-                colIndex = (ord(byte) & 0x0F)
-                if mode is Mode.ENCRYPT:
-                    row[i] = SBOX[rowIndex * 16 + colIndex].to_bytes(1, "big")
-                elif mode is Mode.DECRYPT:
-                    row[i] = SBOX_INV[rowIndex * 16 +
-                                      colIndex].to_bytes(1, "big")
-
+            subBytesRow(row, mode)
     return subBytesState
+
+
+def subBytesRow(row, mode):
+    for i in range(4):
+        byte = row[i]
+        rowIndex = (ord(byte) & 0xF0) >> 4
+        colIndex = (ord(byte) & 0x0F)
+        if mode is Mode.ENCRYPT:
+            row[i] = SBOX[rowIndex * 16 + colIndex].to_bytes(1, "big")
+        elif mode is Mode.DECRYPT:
+            row[i] = SBOX_INV[rowIndex * 16 +
+                              colIndex].to_bytes(1, "big")
+
 
 
 def shiftRows(state, mode):
@@ -166,9 +172,20 @@ def xor(wordA, wordB):
     return [byteA ^ byteB for (byteA, byteB) in zip(wordA, wordB)]
 
 
-def nextRoundKey(prevKey):
-    w0 = None
+def rcon(i):
+    return [RC[i], 0x00, 0x00, 0x00]
 
+
+def g(word, i):
+    row = deque(word)
+    row.rotate(-1)
+    gword = list(row)
+    subBytesRow(gword, Mode.ENCRYPT)
+    return xor(gword, rcon(i))
+
+
+def nextRoundKey(prevKey, i):
+    w0 = xor(prevKey[0], g(prevKey[3], i))
     w1 = xor(w0, prevKey[1])
     w2 = xor(w1, prevKey[2])
     w3 = xor(w2, prevKey[3])
