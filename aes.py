@@ -169,14 +169,17 @@ def addRoundKey(state, mode):
 
 
 def xor(wordA, wordB):
+    """Performs xor operation for each byte for two given words"""
     return [byteA ^ byteB for (byteA, byteB) in zip(wordA, wordB)]
 
 
 def rcon(i):
+    """Returns Rcon[i], the round constant for round i"""
     return [RC[i], 0x00, 0x00, 0x00]
 
 
 def g(word, i):
+    """g function used for generating first word in nextRoundKey"""
     row = deque(word)
     row.rotate(-1)
     gword = list(row)
@@ -185,6 +188,9 @@ def g(word, i):
 
 
 def nextRoundKey(prevKey, i):
+    """Returns the next round key,
+    based on the previous key and the round iteration number.
+    """
     w0 = xor(prevKey[0], g(prevKey[3], i))
     w1 = xor(w0, prevKey[1])
     w2 = xor(w1, prevKey[2])
