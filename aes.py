@@ -102,7 +102,7 @@ def inputToState(input):
     numberOfBlocks = math.ceil(len(inputBytes) / 16)
     remaining = (16 * numberOfBlocks) - len(inputBytes)
 
-    if(remaining > 0):
+    if remaining > 0:
         for i in range(remaining):
             inputBytes.append(remaining.to_bytes(1, "big"))
 
