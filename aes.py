@@ -43,7 +43,7 @@ def main(argv):
             elif arg in ("decrypt", "d", "1"):
                 mode = Mode.DECRYPT
 
-    keyBytes = [] # TODO: Remove this line when merging
+    keyBytes = inputKeyBytes(keyFile)
     roundKeys = generateRoundKeys(keyBytes, keySize)
     keySchedule = [word for roundKey in roundKeys for word in roundKey]
     numRounds = 10 if keySize is KeySize.B128 else 14
@@ -114,6 +114,25 @@ def inputToState(input):
     return state
 
 
+def inputKeyBytes(input):
+    inputBytes = []
+    byte = input.read(1)
+    while byte:
+        inputBytes.append(byte)
+        byte = input.read(1)
+
+    inputKey = []
+    idx = 0
+    for i in range(4):
+        newRow = []
+        for j in range(idx, idx + 4):
+            newRow.append(inputBytes[j])
+            idx += 1
+        inputKey.append(newRow)
+    
+    return inputKey
+
+
 def stateToOutput(state, outputFile):
     for block in state:
         for row in block:
@@ -123,7 +142,15 @@ def stateToOutput(state, outputFile):
 
 def xor(wordA, wordB):
     """Performs xor operation for each byte for two given words"""
-    return [byteA ^ byteB for (byteA, byteB) in zip(wordA, wordB)]
+    listA = list(wordA)
+    listB = list(wordB)
+    return [byteToInt(byteA) ^ byteToInt(byteB) for (byteA, byteB) in zip(listA, listB)]
+
+
+def byteToInt(byte):
+    if isinstance(byte, bytes):
+        return int.from_bytes(byte, "big")
+    return byte
 
 
 def rcon(i, keySize):
@@ -188,8 +215,8 @@ def subBytesRow(row, mode=Mode.ENCRYPT):
     subRow = []
     for i in range(len(row)):
         byte = row[i]
-        rowIndex = (ord(byte) & 0xF0) >> 4
-        colIndex = (ord(byte) & 0x0F)
+        rowIndex = (byteToInt(byte) & 0xF0) >> 4
+        colIndex = (byteToInt(byte) & 0x0F)
         if mode is Mode.ENCRYPT:
             subRow.append(SBOX[rowIndex * 16 + colIndex].to_bytes(1, "big"))
         elif mode is Mode.DECRYPT:
@@ -218,10 +245,10 @@ def mixColumns(block, mode):
        multiplied by a fixed 4x4 matrix of integers."""
     newBlock = [[], [], [], []]
     for i in range(4):
-        col = [int.from_bytes(block[0][i], "big"),
-               int.from_bytes(block[1][i], "big"),
-               int.from_bytes(block[2][i], "big"),
-               int.from_bytes(block[3][i], "big")]
+        col = [byteToInt(block[0][i]),
+               byteToInt(block[1][i]),
+               byteToInt(block[2][i]),
+               byteToInt(block[3][i])]
         if mode is Mode.ENCRYPT:
             newBlock[0].append(MUL2[col[0]] ^ MUL3[col[1]] ^ col[2] ^ col[3])
             newBlock[1].append(col[0] ^ MUL2[col[1]] ^ MUL3[col[2]] ^ col[3])
@@ -243,7 +270,7 @@ def addRoundKey(block, keySchedule, round):
     for x in range(4):
         newRow = []
         for y in range(4):
-            newRow.append(block[y][x] ^ roundKey[x][y])
+            newRow.append(byteToInt(block[x][y]) ^ byteToInt(roundKey[x][y]))
         newBlock.append(newRow)
     return newBlock
 
