@@ -138,7 +138,7 @@ def g(word, i, keySize):
     """g function used for generating first word in nextRoundKey"""
     row = deque(word)
     row.rotate(-1)
-    gword = subBytesRow(list(row), Mode.ENCRYPT)
+    gword = subBytesRow(list(row))
     return xor(gword, rcon(i, keySize))
 
 
@@ -158,7 +158,7 @@ def nextRoundKey(prevKey, i, keySize):
         w1 = xor(w0, prevKey[1])
         w2 = xor(w1, prevKey[2])
         w3 = xor(w2, prevKey[3])
-        w4 = xor(subBytesRow(w3, Mode.ENCRYPT), prevKey[4])
+        w4 = xor(subBytesRow(w3), prevKey[4])
         w5 = xor(w4, prevKey[5])
         w6 = xor(w5, prevKey[6])
         w7 = xor(w6, prevKey[7])
@@ -184,10 +184,10 @@ def subBytes(block, mode):
     return list(map(lambda r: subBytesRow(r, mode), block))
 
 
-def subBytesRow(row, mode):
+def subBytesRow(row, mode=Mode.ENCRYPT):
     subRow = []
     for i in range(len(row)):
-        byte = str(row[i])
+        byte = row[i]
         rowIndex = (ord(byte) & 0xF0) >> 4
         colIndex = (ord(byte) & 0x0F)
         if mode is Mode.ENCRYPT:
