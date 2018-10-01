@@ -43,7 +43,7 @@ def main(argv):
             elif arg in ("decrypt", "d", "1"):
                 mode = Mode.DECRYPT
 
-    keyBytes = inputKeyBytes(keyFile)
+    keyBytes = inputKeyBytes(keyFile, keySize)
     roundKeys = generateRoundKeys(keyBytes, keySize)
     keySchedule = [word for roundKey in roundKeys for word in roundKey]
     numRounds = 10 if keySize is KeySize.B128 else 14
