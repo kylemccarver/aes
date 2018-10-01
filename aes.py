@@ -2,7 +2,7 @@ import sys
 import getopt
 from enum import Enum
 from collections import deque
-from aes.constants import *
+from constants import *
 
 Mode = Enum('Mode', 'ENCRYPT DECRYPT')
 
