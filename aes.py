@@ -5,10 +5,11 @@ from collections import deque
 from constants import *
 
 Mode = Enum('Mode', 'ENCRYPT DECRYPT')
+KeySize = Enum('KeySize', 'B128 B256')
 
 def main(argv):
     # keySize will be either 128 or 256
-    keySize = 0
+    keySize = None
     keyFile = None
     inputFile = None
     outputFile = None
@@ -26,7 +27,10 @@ def main(argv):
 
     for opt, arg in opts:
         if opt == "--keysize":
-            keySize = arg
+            if arg in (128, "128"):
+                keySize = KeySize.B128
+            elif arg in (256, "256"):
+                keySize = KeySize.B256
         elif opt == "--keyfile":
             keyFile = open(arg, "rb")
         elif opt == "--inputfile":
@@ -118,7 +122,7 @@ def generateRoundKeys(key, keySize):
     """Returns a table of round keys, starting with the initial key"""
     roundKeys = [key]
     i = 1
-    numRounds = 10 if keySize == 128 else 14
+    numRounds = 10 if keySize is KeySize.B128 else 14
     while i <= numRounds:
         prevKey = roundKeys[i - 1]
         roundKeys.append(nextRoundKey(prevKey, i))
