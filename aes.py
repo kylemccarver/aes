@@ -43,20 +43,46 @@ def main(argv):
             elif arg in ("decrypt", "d", "1"):
                 mode = Mode.DECRYPT
 
-    # do stuff with parameters
+    keyBytes = [] # TODO: Remove this line when merging
+    roundKeys = generateRoundKeys(keyBytes, keySize)
+    keySchedule = [word for roundKey in roundKeys for word in roundKey]
+    numRounds = 10 if keySize is KeySize.B128 else 14
     state = inputToState(inputFile)
+
+    newState = []
     if mode is Mode.ENCRYPT:
-        state = subBytes(state, mode)
-        state = shiftRows(state, mode)
-        state = mixColumns(state, mode)
-        state = addRoundKey(state, None)
+        for block in state:
+            newBlock = addRoundKey(block, keySchedule, 0)
+
+            for r in range(1, numRounds):
+                newBlock = subBytes(newBlock, mode)
+                newBlock = shiftRows(newBlock, mode)
+                newBlock = mixColumns(newBlock, mode)
+                newBlock = addRoundKey(newBlock, keySchedule, r)
+
+            newBlock = subBytes(newBlock, mode)
+            newBlock = shiftRows(newBlock, mode)
+            newBlock = addRoundKey(newBlock, keySchedule, numRounds)
+
+            newState.append(newBlock)
+
     elif mode is Mode.DECRYPT:
-        state = shiftRows(state, mode)
-        state = subBytes(state, mode)
-        state = addRoundKey(state, mode)
-        state = mixColumns(state, mode)
-    
-    print(state)
+        for block in state:
+            newBlock = addRoundKey(block, keySchedule, numRounds)
+
+            for r in reversed(range(1, numRounds)):
+                newBlock = shiftRows(newBlock, mode)
+                newBlock = subBytes(newBlock, mode)
+                newBlock = addRoundKey(newBlock, keySchedule, r)
+                newBlock = mixColumns(newBlock, mode)
+
+            newBlock = shiftRows(newBlock, mode)
+            newBlock = subBytes(newBlock, mode)
+            newBlock = addRoundKey(newBlock, keySchedule, 0)
+
+            newState.append(newBlock)
+
+    stateToOutput(newState, outputFile)
 
 
 def inputToState(input):
@@ -88,34 +114,56 @@ def inputToState(input):
     return state
 
 
+def stateToOutput(state, outputFile):
+    for block in state:
+        for row in block:
+            for byte in row:
+                outputFile.write(byte.to_bytes(1, "big"))
+
+
 def xor(wordA, wordB):
     """Performs xor operation for each byte for two given words"""
     return [byteA ^ byteB for (byteA, byteB) in zip(wordA, wordB)]
 
 
-def rcon(i):
+def rcon(i, keySize):
     """Returns Rcon[i], the round constant for round i"""
-    return [RC[i], 0x00, 0x00, 0x00]
+    rconBytes = [RC[i], 0x00, 0x00, 0x00]
+    if keySize is KeySize.B256:
+        rconBytes += [0x00, 0x00, 0x00, 0x00]
+    return rconBytes
 
 
-def g(word, i):
+def g(word, i, keySize):
     """g function used for generating first word in nextRoundKey"""
     row = deque(word)
     row.rotate(-1)
-    gword = list(row)
-    subBytesRow(gword, Mode.ENCRYPT)
-    return xor(gword, rcon(i))
+    gword = subBytesRow(list(row))
+    return xor(gword, rcon(i, keySize))
 
 
-def nextRoundKey(prevKey, i):
+def nextRoundKey(prevKey, i, keySize):
     """Returns the next round key,
     based on the previous key and the round iteration number.
     """
-    w0 = xor(prevKey[0], g(prevKey[3], i))
-    w1 = xor(w0, prevKey[1])
-    w2 = xor(w1, prevKey[2])
-    w3 = xor(w2, prevKey[3])
-    return [w0, w1, w2, w3]
+    roundKey = []
+    if keySize is KeySize.B128:
+        w0 = xor(g(prevKey[3], i, keySize), prevKey[0])
+        w1 = xor(w0, prevKey[1])
+        w2 = xor(w1, prevKey[2])
+        w3 = xor(w2, prevKey[3])
+        roundKey = [w0, w1, w2, w3]
+    elif keySize is KeySize.B256:
+        w0 = xor(g(prevKey[7], i, keySize), prevKey[0])
+        w1 = xor(w0, prevKey[1])
+        w2 = xor(w1, prevKey[2])
+        w3 = xor(w2, prevKey[3])
+        w4 = xor(subBytesRow(w3), prevKey[4])
+        w5 = xor(w4, prevKey[5])
+        w6 = xor(w5, prevKey[6])
+        w7 = xor(w6, prevKey[7])
+        roundKey = [w0, w1, w2, w3, w4, w5, w6, w7]
+    return roundKey
 
 
 def generateRoundKeys(key, keySize):
@@ -125,80 +173,79 @@ def generateRoundKeys(key, keySize):
     numRounds = 10 if keySize is KeySize.B128 else 14
     while i <= numRounds:
         prevKey = roundKeys[i - 1]
-        roundKeys.append(nextRoundKey(prevKey, i))
+        roundKeys.append(nextRoundKey(prevKey, i, keySize))
         i += 1
     return roundKeys
 
 
-def subBytes(state, mode):
+def subBytes(block, mode):
     """Substitutes each byte in the state with the corresponding entry in the 
        SBOX table."""
-    subBytesState = state
-    for block in subBytesState:
-        for row in block:
-            subBytesRow(row, mode)
-    return subBytesState
+    return list(map(lambda r: subBytesRow(r, mode), block))
 
 
-def subBytesRow(row, mode):
-    for i in range(4):
+def subBytesRow(row, mode=Mode.ENCRYPT):
+    subRow = []
+    for i in range(len(row)):
         byte = row[i]
         rowIndex = (ord(byte) & 0xF0) >> 4
         colIndex = (ord(byte) & 0x0F)
         if mode is Mode.ENCRYPT:
-            row[i] = SBOX[rowIndex * 16 + colIndex].to_bytes(1, "big")
+            subRow.append(SBOX[rowIndex * 16 + colIndex].to_bytes(1, "big"))
         elif mode is Mode.DECRYPT:
-            row[i] = SBOX_INV[rowIndex * 16 +
-                              colIndex].to_bytes(1, "big")
+            subRow.append(SBOX_INV[rowIndex * 16 +
+                              colIndex].to_bytes(1, "big"))
+    return subRow
 
 
-def shiftRows(state, mode):
-    shiftRowsState = []
-    for block in state:
-        newBlock = [block[0]]  # don't need to shift row 0
+def shiftRows(block, mode):
+    newBlock = [block[0]]  # don't need to shift row 0
 
-        # newBlock[x] <- block[x] shifted by x bytes
-        for x in range(1, 4):
-            row = deque(block[x])
-            if mode is Mode.ENCRYPT:
-                row.rotate(-x)  # shift left
-            elif mode is Mode.DECRYPT:
-                row.rotate(x)   # shift right
-            newBlock.append(list(row))
+    # newBlock[x] <- block[x] shifted by x bytes
+    for x in range(1, 4):
+        row = deque(block[x])
+        if mode is Mode.ENCRYPT:
+            row.rotate(-x)  # shift left
+        elif mode is Mode.DECRYPT:
+            row.rotate(x)   # shift right
+        newBlock.append(list(row))
 
-        shiftRowsState.append(newBlock)
-
-    return shiftRowsState
+    return newBlock
 
 
-def mixColumns(state, mode):
+def mixColumns(block, mode):
     """For each column in the state, replace each byte with its value
        multiplied by a fixed 4x4 matrix of integers."""
-    mixColumnsState = []
-    for block in state:
-        newBlock = [[], [], [], []]
-        for i in range(4):
-            col = [int.from_bytes(block[0][i], "big"),
-                   int.from_bytes(block[1][i], "big"),
-                   int.from_bytes(block[2][i], "big"),
-                   int.from_bytes(block[3][i], "big")]
-            if mode is Mode.ENCRYPT:
-                newBlock[0].append(MUL2[col[0]] ^ MUL3[col[1]] ^ col[2] ^ col[3])
-                newBlock[1].append(col[0] ^ MUL2[col[1]] ^ MUL3[col[2]] ^ col[3])
-                newBlock[2].append(col[0] ^ col[1] ^ MUL2[col[2]] ^ MUL3[col[3]])
-                newBlock[3].append(MUL3[col[0]] ^ col[1] ^ col[2] ^ MUL2[col[3]])
-            elif mode is Mode.DECRYPT:
-                newBlock[0].append(MUL14[col[0]] ^ MUL11[col[1]] ^ MUL13[col[2]] ^ MUL9[col[3]])
-                newBlock[1].append(MUL9[col[0]] ^ MUL14[col[1]] ^ MUL11[col[2]] ^ MUL13[col[3]])
-                newBlock[2].append(MUL13[col[0]] ^ MUL9[col[1]] ^ MUL14[col[2]] ^ MUL11[col[3]])
-                newBlock[3].append(MUL11[col[0]] ^ MUL13[col[1]] ^ MUL9[col[2]] ^ MUL14[col[3]])
-        mixColumnsState.append(newBlock)
+    newBlock = [[], [], [], []]
+    for i in range(4):
+        col = [int.from_bytes(block[0][i], "big"),
+               int.from_bytes(block[1][i], "big"),
+               int.from_bytes(block[2][i], "big"),
+               int.from_bytes(block[3][i], "big")]
+        if mode is Mode.ENCRYPT:
+            newBlock[0].append(MUL2[col[0]] ^ MUL3[col[1]] ^ col[2] ^ col[3])
+            newBlock[1].append(col[0] ^ MUL2[col[1]] ^ MUL3[col[2]] ^ col[3])
+            newBlock[2].append(col[0] ^ col[1] ^ MUL2[col[2]] ^ MUL3[col[3]])
+            newBlock[3].append(MUL3[col[0]] ^ col[1] ^ col[2] ^ MUL2[col[3]])
+        elif mode is Mode.DECRYPT:
+            newBlock[0].append(MUL14[col[0]] ^ MUL11[col[1]] ^ MUL13[col[2]] ^ MUL9[col[3]])
+            newBlock[1].append(MUL9[col[0]] ^ MUL14[col[1]] ^ MUL11[col[2]] ^ MUL13[col[3]])
+            newBlock[2].append(MUL13[col[0]] ^ MUL9[col[1]] ^ MUL14[col[2]] ^ MUL11[col[3]])
+            newBlock[3].append(MUL11[col[0]] ^ MUL13[col[1]] ^ MUL9[col[2]] ^ MUL14[col[3]])
 
-    return mixColumnsState
+    return newBlock
 
 
-def addRoundKey(state, round):
-    return state
+def addRoundKey(block, keySchedule, round):
+    newBlock = []
+    idx = round * 4
+    roundKey = [keySchedule[idx], keySchedule[idx+1], keySchedule[idx+2], keySchedule[idx+3]]
+    for x in range(4):
+        newRow = []
+        for y in range(4):
+            newRow.append(block[y][x] ^ roundKey[x][y])
+        newBlock.append(newRow)
+    return newBlock
 
 
 if __name__ == "__main__":
