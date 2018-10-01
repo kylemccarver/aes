@@ -51,6 +51,7 @@ def main(argv):
 
     newState = []
     if mode is Mode.ENCRYPT:
+        # AES Encryption Cipher
         for block in state:
             newBlock = addRoundKey(block, keySchedule, 0)
 
@@ -67,6 +68,7 @@ def main(argv):
             newState.append(newBlock)
 
     elif mode is Mode.DECRYPT:
+        # AES Decryption Cipher
         for block in state:
             newBlock = addRoundKey(block, keySchedule, numRounds)
 
@@ -114,7 +116,8 @@ def inputToState(input):
     return state
 
 
-def inputKeyBytes(input):
+def inputKeyBytes(input, keySize):
+    """Returns the input key as a list of 4-byte words"""
     inputBytes = []
     byte = input.read(1)
     while byte:
@@ -123,7 +126,8 @@ def inputKeyBytes(input):
 
     inputKey = []
     idx = 0
-    for i in range(4):
+    numRows = 4 if keySize is KeySize.B128 else 8
+    for i in range(numRows):
         newRow = []
         for j in range(idx, idx + 4):
             newRow.append(inputBytes[j])
@@ -134,23 +138,23 @@ def inputKeyBytes(input):
 
 
 def stateToOutput(state, outputFile):
+    """Writes the resulting state to the output file"""
     for block in state:
         for row in block:
             for byte in row:
                 outputFile.write(byte.to_bytes(1, "big"))
 
 
-def xor(wordA, wordB):
-    """Performs xor operation for each byte for two given words"""
-    listA = list(wordA)
-    listB = list(wordB)
-    return [byteToInt(byteA) ^ byteToInt(byteB) for (byteA, byteB) in zip(listA, listB)]
-
-
 def byteToInt(byte):
+    """If input is a bytes object, converts it to an int"""
     if isinstance(byte, bytes):
         return int.from_bytes(byte, "big")
     return byte
+
+
+def xor(wordA, wordB):
+    """Performs xor operation for each byte for two given words"""
+    return [byteToInt(byteA) ^ byteToInt(byteB) for (byteA, byteB) in zip(wordA, wordB)]
 
 
 def rcon(i, keySize):
@@ -170,9 +174,8 @@ def g(word, i, keySize):
 
 
 def nextRoundKey(prevKey, i, keySize):
-    """Returns the next round key,
-    based on the previous key and the round iteration number.
-    """
+    """Returns the next round key, based on the previous key,
+       the round iteration number, and the key size."""
     roundKey = []
     if keySize is KeySize.B128:
         w0 = xor(g(prevKey[3], i, keySize), prevKey[0])
@@ -206,12 +209,14 @@ def generateRoundKeys(key, keySize):
 
 
 def subBytes(block, mode):
-    """Substitutes each byte in the state with the corresponding entry in the 
-       SBOX table."""
+    """Substitutes each byte in the given block with the corresponding entry
+       in the SBOX table."""
     return list(map(lambda r: subBytesRow(r, mode), block))
 
 
 def subBytesRow(row, mode=Mode.ENCRYPT):
+    """Substitutes each byte in the given row with the corresponding entry
+       in the SBOX table."""
     subRow = []
     for i in range(len(row)):
         byte = row[i]
@@ -226,6 +231,8 @@ def subBytesRow(row, mode=Mode.ENCRYPT):
 
 
 def shiftRows(block, mode):
+    """Shifts each row in the given block based on its position
+       within the block."""
     newBlock = [block[0]]  # don't need to shift row 0
 
     # newBlock[x] <- block[x] shifted by x bytes
@@ -263,10 +270,15 @@ def mixColumns(block, mode):
     return newBlock
 
 
-def addRoundKey(block, keySchedule, round):
+def addRoundKey(block, keySchedule, i):
+    """XORs the given block with the round key in the key schedule
+       corresponding to round i."""
     newBlock = []
-    idx = round * 4
-    roundKey = [keySchedule[idx], keySchedule[idx+1], keySchedule[idx+2], keySchedule[idx+3]]
+    idx = i * 4
+    roundKey = [keySchedule[idx],
+                keySchedule[idx+1],
+                keySchedule[idx+2],
+                keySchedule[idx+3]]
     for x in range(4):
         newRow = []
         for y in range(4):
