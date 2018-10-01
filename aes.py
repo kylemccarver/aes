@@ -85,13 +85,14 @@ def main(argv):
         state = subBytes(state, mode)
         state = shiftRows(state, mode)
         state = mixColumns(state, mode)
-        state = addRoundKey(state, mode)
+        state = addRoundKey(state, None)
     elif mode is Mode.DECRYPT:
-        state = addRoundKey(state, mode)
+        state = addRoundKey(state, None)
         state = mixColumns(state, mode)
         state = shiftRows(state, mode)
         state = subBytes(state, mode)
     print(state)
+
 
 def inputToState(input):
     inputBytes = []
@@ -118,6 +119,47 @@ def inputToState(input):
         state.append(block)
 
     return state
+
+
+def xor(wordA, wordB):
+    """Performs xor operation for each byte for two given words"""
+    return [byteA ^ byteB for (byteA, byteB) in zip(wordA, wordB)]
+
+
+def rcon(i):
+    """Returns Rcon[i], the round constant for round i"""
+    return [RC[i], 0x00, 0x00, 0x00]
+
+
+def g(word, i):
+    """g function used for generating first word in nextRoundKey"""
+    row = deque(word)
+    row.rotate(-1)
+    gword = list(row)
+    subBytesRow(gword, Mode.ENCRYPT)
+    return xor(gword, rcon(i))
+
+
+def nextRoundKey(prevKey, i):
+    """Returns the next round key,
+    based on the previous key and the round iteration number.
+    """
+    w0 = xor(prevKey[0], g(prevKey[3], i))
+    w1 = xor(w0, prevKey[1])
+    w2 = xor(w1, prevKey[2])
+    w3 = xor(w2, prevKey[3])
+    return [w0, w1, w2, w3]
+
+def generateRoundKeys(key, keySize):
+    """Returns a table of round keys, starting with the initial key"""
+    roundKeys = [key]
+    i = 1
+    numRounds = 10 if keySize == 128 else 14
+    while i <= numRounds:
+        prevKey = roundKeys[i - 1]
+        roundKeys.append(nextRoundKey(prevKey, i))
+        i += 1
+    return roundKeys
 
 
 def subBytes(state, mode):
@@ -164,38 +206,8 @@ def mixColumns(state, mode):
     return state
 
 
-def addRoundKey(state, mode):
+def addRoundKey(state, round):
     return state
-
-
-def xor(wordA, wordB):
-    """Performs xor operation for each byte for two given words"""
-    return [byteA ^ byteB for (byteA, byteB) in zip(wordA, wordB)]
-
-
-def rcon(i):
-    """Returns Rcon[i], the round constant for round i"""
-    return [RC[i], 0x00, 0x00, 0x00]
-
-
-def g(word, i):
-    """g function used for generating first word in nextRoundKey"""
-    row = deque(word)
-    row.rotate(-1)
-    gword = list(row)
-    subBytesRow(gword, Mode.ENCRYPT)
-    return xor(gword, rcon(i))
-
-
-def nextRoundKey(prevKey, i):
-    """Returns the next round key,
-    based on the previous key and the round iteration number.
-    """
-    w0 = xor(prevKey[0], g(prevKey[3], i))
-    w1 = xor(w0, prevKey[1])
-    w2 = xor(w1, prevKey[2])
-    w3 = xor(w2, prevKey[3])
-    return [w0, w1, w2, w3]
 
 
 if __name__ == "__main__":
