@@ -101,24 +101,36 @@ def rcon(i, keySize):
     return rconBytes
 
 
-def g(word, i):
+def g(word, i, keySize):
     """g function used for generating first word in nextRoundKey"""
     row = deque(word)
     row.rotate(-1)
-    gword = list(row)
-    subBytesRow(gword, Mode.ENCRYPT)
-    return xor(gword, rcon(i))
+    gword = subBytesRow(list(row), Mode.ENCRYPT)
+    return xor(gword, rcon(i, keySize))
 
 
-def nextRoundKey(prevKey, i):
+def nextRoundKey(prevKey, i, keySize):
     """Returns the next round key,
     based on the previous key and the round iteration number.
     """
-    w0 = xor(prevKey[0], g(prevKey[3], i))
-    w1 = xor(w0, prevKey[1])
-    w2 = xor(w1, prevKey[2])
-    w3 = xor(w2, prevKey[3])
-    return [w0, w1, w2, w3]
+    roundKey = []
+    if keySize is KeySize.B128:
+        w0 = xor(g(prevKey[3], i, keySize), prevKey[0])
+        w1 = xor(w0, prevKey[1])
+        w2 = xor(w1, prevKey[2])
+        w3 = xor(w2, prevKey[3])
+        roundKey = [w0, w1, w2, w3]
+    elif keySize is KeySize.B256:
+        w0 = xor(g(prevKey[7], i, keySize), prevKey[0])
+        w1 = xor(w0, prevKey[1])
+        w2 = xor(w1, prevKey[2])
+        w3 = xor(w2, prevKey[3])
+        w4 = xor(subBytesRow(w3, Mode.ENCRYPT), prevKey[4])
+        w5 = xor(w4, prevKey[5])
+        w6 = xor(w5, prevKey[6])
+        w7 = xor(w6, prevKey[7])
+        roundKey = [w0, w1, w2, w3, w4, w5, w6, w7]
+    return roundKey
 
 
 def generateRoundKeys(key, keySize):
@@ -128,7 +140,7 @@ def generateRoundKeys(key, keySize):
     numRounds = 10 if keySize is KeySize.B128 else 14
     while i <= numRounds:
         prevKey = roundKeys[i - 1]
-        roundKeys.append(nextRoundKey(prevKey, i))
+        roundKeys.append(nextRoundKey(prevKey, i, keySize))
         i += 1
     return roundKeys
 
@@ -136,23 +148,24 @@ def generateRoundKeys(key, keySize):
 def subBytes(state, mode):
     """Substitutes each byte in the state with the corresponding entry in the 
        SBOX table."""
-    subBytesState = state
-    for block in subBytesState:
-        for row in block:
-            subBytesRow(row, mode)
+    subBytesState = []
+    for block in state:
+        subBytesState.append(list(map(lambda r: subBytesRow(r, mode), block)))
     return subBytesState
 
 
 def subBytesRow(row, mode):
-    for i in range(4):
-        byte = row[i]
+    subRow = []
+    for i in range(len(row)):
+        byte = str(row[i])
         rowIndex = (ord(byte) & 0xF0) >> 4
         colIndex = (ord(byte) & 0x0F)
         if mode is Mode.ENCRYPT:
-            row[i] = SBOX[rowIndex * 16 + colIndex].to_bytes(1, "big")
+            subRow.append(SBOX[rowIndex * 16 + colIndex].to_bytes(1, "big"))
         elif mode is Mode.DECRYPT:
-            row[i] = SBOX_INV[rowIndex * 16 +
-                              colIndex].to_bytes(1, "big")
+            subRow.append(SBOX_INV[rowIndex * 16 +
+                              colIndex].to_bytes(1, "big"))
+    return subRow
 
 
 def shiftRows(state, mode):
