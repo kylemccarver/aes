@@ -93,9 +93,12 @@ def xor(wordA, wordB):
     return [byteA ^ byteB for (byteA, byteB) in zip(wordA, wordB)]
 
 
-def rcon(i):
+def rcon(i, keySize):
     """Returns Rcon[i], the round constant for round i"""
-    return [RC[i], 0x00, 0x00, 0x00]
+    rconBytes = [RC[i], 0x00, 0x00, 0x00]
+    if keySize is KeySize.B256:
+        rconBytes += [0x00, 0x00, 0x00, 0x00]
+    return rconBytes
 
 
 def g(word, i):
