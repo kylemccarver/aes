@@ -266,6 +266,7 @@ def nextRoundKey(prevKey, i):
     w3 = xor(w2, prevKey[3])
     return [w0, w1, w2, w3]
 
+
 def generateRoundKeys(key, keySize):
     """Returns a table of round keys, starting with the initial key"""
     roundKeys = [key]
@@ -298,7 +299,6 @@ def subBytesRow(row, mode):
         elif mode is Mode.DECRYPT:
             row[i] = SBOX_INV[rowIndex * 16 +
                               colIndex].to_bytes(1, "big")
-
 
 
 def shiftRows(state, mode):
