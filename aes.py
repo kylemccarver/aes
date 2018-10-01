@@ -1,11 +1,13 @@
 import sys
 import getopt
+import math
 from enum import Enum
 from collections import deque
 from constants import *
 
 Mode = Enum('Mode', 'ENCRYPT DECRYPT')
 KeySize = Enum('KeySize', 'B128 B256')
+
 
 def main(argv):
     # keySize will be either 128 or 256
@@ -88,7 +90,7 @@ def main(argv):
 
 
 def inputToState(input):
-    """Takes the input file and stores its bytes as a list of 4x4 blocks of 
+    """Takes the input file and stores its bytes as a list of 4x4 blocks of
        data."""
     inputBytes = []
     byte = input.read(1)
@@ -97,12 +99,13 @@ def inputToState(input):
         byte = input.read(1)
 
     # Add padding if the length is not a multiple of 16; CMS method
-    if len(inputBytes) % 16 != 0:
-        remainder = 16 - len(inputBytes)
-        for i in range(remainder):
-            inputBytes.append(remainder.to_bytes(1, "big"))
+    numberOfBlocks = math.ceil(len(inputBytes) / 16)
+    remaining = (16 * numberOfBlocks) - len(inputBytes)
 
-    numberOfBlocks = int(len(inputBytes) / 16)
+    if(remaining > 0):
+        for i in range(remaining):
+            inputBytes.append(remaining.to_bytes(1, "big"))
+
     inputIndex = 0
     state = []
     for i in range(numberOfBlocks):
@@ -133,7 +136,7 @@ def inputKeyBytes(input, keySize):
             newRow.append(inputBytes[j])
             idx += 1
         inputKey.append(newRow)
-    
+
     return inputKey
 
 
@@ -154,7 +157,7 @@ def byteToInt(byte):
 
 def xor(wordA, wordB):
     """Performs xor operation for each byte for two given words"""
-    return [byteToInt(byteA) ^ byteToInt(byteB) for (byteA, byteB) in zip(wordA, wordB)]
+    return [byteToInt(a) ^ byteToInt(b) for (a, b) in zip(wordA, wordB)]
 
 
 def rcon(i, keySize):
@@ -226,7 +229,7 @@ def subBytesRow(row, mode=Mode.ENCRYPT):
             subRow.append(SBOX[rowIndex * 16 + colIndex].to_bytes(1, "big"))
         elif mode is Mode.DECRYPT:
             subRow.append(SBOX_INV[rowIndex * 16 +
-                              colIndex].to_bytes(1, "big"))
+                                   colIndex].to_bytes(1, "big"))
     return subRow
 
 
@@ -262,10 +265,14 @@ def mixColumns(block, mode):
             newBlock[2].append(col[0] ^ col[1] ^ MUL2[col[2]] ^ MUL3[col[3]])
             newBlock[3].append(MUL3[col[0]] ^ col[1] ^ col[2] ^ MUL2[col[3]])
         elif mode is Mode.DECRYPT:
-            newBlock[0].append(MUL14[col[0]] ^ MUL11[col[1]] ^ MUL13[col[2]] ^ MUL9[col[3]])
-            newBlock[1].append(MUL9[col[0]] ^ MUL14[col[1]] ^ MUL11[col[2]] ^ MUL13[col[3]])
-            newBlock[2].append(MUL13[col[0]] ^ MUL9[col[1]] ^ MUL14[col[2]] ^ MUL11[col[3]])
-            newBlock[3].append(MUL11[col[0]] ^ MUL13[col[1]] ^ MUL9[col[2]] ^ MUL14[col[3]])
+            newBlock[0].append(MUL14[col[0]] ^ MUL11[col[1]] ^
+                               MUL13[col[2]] ^ MUL9[col[3]])
+            newBlock[1].append(MUL9[col[0]] ^ MUL14[col[1]] ^
+                               MUL11[col[2]] ^ MUL13[col[3]])
+            newBlock[2].append(MUL13[col[0]] ^ MUL9[col[1]] ^
+                               MUL14[col[2]] ^ MUL11[col[3]])
+            newBlock[3].append(MUL11[col[0]] ^ MUL13[col[1]] ^
+                               MUL9[col[2]] ^ MUL14[col[3]])
 
     return newBlock
 
