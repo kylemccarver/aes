@@ -146,12 +146,27 @@ def inputKeyBytes(input, keySize):
     return inputKey
 
 
-def stateToOutput(state, outputFile):
+def stateToOutput(state, outputFile, mode):
     """Writes the resulting state to the output file"""
-    for block in state:
-        for row in block:
-            for byte in row:
-                outputFile.write(byte.to_bytes(1, "big"))
+    # If decrypting, remove any additional padding
+    if mode is Mode.DECRYPT:
+        totalLength = len(state) * 16
+        paddedBytes = 0
+        if(totalLength % 16 != 0):
+            paddedBytes = state[len(state)-1][3][3]
+        outputLength = totalLength - paddedBytes
+        currentPos = 0
+        for block in state:
+            for row in block:
+                for byte in row:
+                    if(currentPos < outputLength):
+                        outputFile.write(byte.to_bytes(1, "big"))
+                        currentPos += 1
+    else:
+        for block in state:
+            for row in block:
+                for byte in row:
+                    outputFile.write(byte.to_bytes(1, "big"))
 
 
 def byteToInt(byte):
