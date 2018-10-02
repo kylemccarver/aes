@@ -286,17 +286,15 @@ def mixColumns(block, mode):
 def addRoundKey(block, keySchedule, i):
     """XORs the given block with the round key in the key schedule
        corresponding to round i."""
-    newBlock = []
+    newBlock = [[0]*4 for _ in range(4)]
     idx = i * 4
     roundKey = [keySchedule[idx],
                 keySchedule[idx+1],
                 keySchedule[idx+2],
                 keySchedule[idx+3]]
     for x in range(4):
-        newRow = []
         for y in range(4):
-            newRow.append(byteToInt(block[x][y]) ^ byteToInt(roundKey[x][y]))
-        newBlock.append(newRow)
+            newBlock[x][y] = byteToInt(block[x][y]) ^ byteToInt(roundKey[y][x])
     return newBlock
 
 
