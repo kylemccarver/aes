@@ -310,7 +310,7 @@ def addRoundKey(block, keySchedule, i):
                 keySchedule[idx+3]]
     for x in range(4):
         for y in range(4):
-            newBlock[x][y] = byteToInt(block[x][y]) ^ byteToInt(roundKey[y][x])
+            newBlock[y][x] = byteToInt(block[y][x]) ^ byteToInt(roundKey[x][y])
     return newBlock
 
 
