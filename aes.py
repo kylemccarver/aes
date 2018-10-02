@@ -10,12 +10,7 @@ KeySize = Enum('KeySize', 'B128 B256')
 
 
 def main(argv):
-    keySize = None
-    keyFile = None
-    inputFile = None
-    outputFile = None
-    mode = None
-
+    # Handle args
     if len(argv) < 10:
         print(("Usage: aes.py --keysize $KEYSIZE --keyfile $KEYFILE "
                "--inputfile $INPUTFILE --outputfile $OUTFILENAME --mode "
@@ -25,6 +20,14 @@ def main(argv):
     opts, args = getopt.getopt(argv, "", ["keysize=", "keyfile=",
                                "inputfile=", "outputfile=", "mode="])
 
+    # Variables to hold arg values
+    keySize = None
+    keyFile = None
+    inputFile = None
+    outputFile = None
+    mode = None
+
+    # Set variables based on arg values
     for opt, arg in opts:
         if opt == "--keysize":
             if arg in (128, "128"):
@@ -44,15 +47,19 @@ def main(argv):
                 mode = Mode.DECRYPT
 
     numRounds = 10 if keySize is KeySize.B128 else 14
+
+    # Generate round keys/key schedule based on the input key
     keyBytes = inputKeyBytes(keyFile, keySize)
     roundKeys = generateRoundKeys(keyBytes, keySize)
     keySchedule = [w for rk in roundKeys for w in rk][:(numRounds+1)*4]
-    state = inputToState(inputFile)
 
-    newState = []
+    # Parse input file into the input state & initialize empty output state
+    inputState = inputToState(inputFile)
+    outputState = []
+
     if mode is Mode.ENCRYPT:
-        # AES Encryption Cipher
-        for block in state:
+        # AES Encryption Cipher Algorithm
+        for block in inputState:
             newBlock = addRoundKey(block, keySchedule, 0)
 
             for r in range(1, numRounds):
@@ -65,11 +72,11 @@ def main(argv):
             newBlock = shiftRows(newBlock, mode)
             newBlock = addRoundKey(newBlock, keySchedule, numRounds)
 
-            newState.append(newBlock)
+            outputState.append(newBlock)
 
     elif mode is Mode.DECRYPT:
-        # AES Decryption Cipher
-        for block in state:
+        # AES Decryption Cipher Algorithm
+        for block in inputState:
             newBlock = addRoundKey(block, keySchedule, numRounds)
 
             for r in reversed(range(1, numRounds)):
@@ -82,9 +89,10 @@ def main(argv):
             newBlock = subBytes(newBlock, mode)
             newBlock = addRoundKey(newBlock, keySchedule, 0)
 
-            newState.append(newBlock)
+            outputState.append(newBlock)
 
-    stateToOutput(newState, outputFile)
+    # Write output state to output file
+    stateToOutput(outputState, outputFile)
 
 
 def inputToState(input):
@@ -287,7 +295,7 @@ def addRoundKey(block, keySchedule, i):
     for x in range(4):
         newRow = []
         for y in range(4):
-            newRow.append(byteToInt(block[x][y]) ^ byteToInt(roundKey[x][y]))
+            newRow.append(byteToInt(block[y][x]) ^ byteToInt(roundKey[x][y]))
         newBlock.append(newRow)
     return newBlock
 
