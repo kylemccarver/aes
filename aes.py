@@ -295,7 +295,7 @@ def addRoundKey(block, keySchedule, i):
     for x in range(4):
         newRow = []
         for y in range(4):
-            newRow.append(byteToInt(block[y][x]) ^ byteToInt(roundKey[x][y]))
+            newRow.append(byteToInt(block[x][y]) ^ byteToInt(roundKey[x][y]))
         newBlock.append(newRow)
     return newBlock
 
