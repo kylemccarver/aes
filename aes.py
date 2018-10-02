@@ -92,7 +92,7 @@ def main(argv):
             outputState.append(newBlock)
 
     # Write output state to output file
-    stateToOutput(outputState, outputFile)
+    stateToOutput(outputState, outputFile, mode)
 
 
 def inputToState(input):
@@ -148,10 +148,26 @@ def inputKeyBytes(input, keySize):
 
 def stateToOutput(state, outputFile, mode):
     """Writes the resulting state to the output file"""
-    for block in state:
-        for row in block:
-            for byte in row:
-                outputFile.write(byte.to_bytes(1, "big"))
+    # If decrypting, remove any additional padding
+    if mode is Mode.DECRYPT:
+        totalLength = len(state) * 16
+        paddedBytes = 0
+        if totalLength % 16 != 0:
+            paddedBytes = state[len(state)-1][3][3]
+        outputLength = totalLength - paddedBytes
+        currentPos = 0
+        for b in state:
+            block = [list(x) for x in zip(b[0], b[1], b[2], b[3])]
+            for row in block:
+                for byte in row:
+                    if currentPos < outputLength:
+                        outputFile.write(byte.to_bytes(1, "big"))
+                        currentPos += 1
+    else:
+        for b in state:
+            block = [list(x) for x in zip(b[0], b[1], b[2], b[3])]
+            for row in block:
+                outputFile.write(bytes(row))
 
 
 def byteToInt(byte):
@@ -294,7 +310,7 @@ def addRoundKey(block, keySchedule, i):
                 keySchedule[idx+3]]
     for x in range(4):
         for y in range(4):
-            newBlock[y][x] = byteToInt(block[y][x]) ^ byteToInt(roundKey[x][y])
+            newBlock[x][y] = byteToInt(block[x][y]) ^ byteToInt(roundKey[y][x])
     return newBlock
 
 
