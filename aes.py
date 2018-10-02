@@ -146,12 +146,12 @@ def inputKeyBytes(input, keySize):
     return inputKey
 
 
-def stateToOutput(state, outputFile):
+def stateToOutput(state, outputFile, mode):
     """Writes the resulting state to the output file"""
-    for b in state:
-        block = [list(x) for x in zip(b[0], b[1], b[2], b[3])]
+    for block in state:
         for row in block:
-            outputFile.write(bytes(row))
+            for byte in row:
+                outputFile.write(byte.to_bytes(1, "big"))
 
 
 def byteToInt(byte):
