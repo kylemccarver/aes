@@ -148,10 +148,10 @@ def inputKeyBytes(input, keySize):
 
 def stateToOutput(state, outputFile):
     """Writes the resulting state to the output file"""
-    for block in state:
+    for b in state:
+        block = [list(x) for x in zip(b[0], b[1], b[2], b[3])]
         for row in block:
-            for byte in row:
-                outputFile.write(byte.to_bytes(1, "big"))
+            outputFile.write(bytes(row))
 
 
 def byteToInt(byte):
@@ -294,7 +294,7 @@ def addRoundKey(block, keySchedule, i):
                 keySchedule[idx+3]]
     for x in range(4):
         for y in range(4):
-            newBlock[x][y] = byteToInt(block[x][y]) ^ byteToInt(roundKey[y][x])
+            newBlock[y][x] = byteToInt(block[y][x]) ^ byteToInt(roundKey[x][y])
     return newBlock
 
 
