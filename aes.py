@@ -10,13 +10,11 @@ KeySize = Enum('KeySize', 'B128 B256')
 
 
 def main(argv):
-    # keySize will be either 128 or 256
     keySize = None
     keyFile = None
     inputFile = None
     outputFile = None
-    # mode will be 0 if encrypting, 1 if decrypting
-    mode = 0
+    mode = None
 
     if len(argv) < 10:
         print(("Usage: aes.py --keysize $KEYSIZE --keyfile $KEYFILE "
