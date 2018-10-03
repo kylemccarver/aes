@@ -172,7 +172,7 @@ def stateToOutput(state, outputFile, mode):
                 padCount += 1
             else:
                 break
-        if(padCount != paddedBytes):
+        if padCount != paddedBytes:
             paddedBytes = 0
 
         outputLength = totalLength - paddedBytes
