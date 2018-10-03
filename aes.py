@@ -54,7 +54,7 @@ def main(argv):
     keySchedule = [w for rk in roundKeys for w in rk][:(numRounds+1)*4]
 
     # Parse input file into the input state & initialize empty output state
-    inputState = inputToState(inputFile)
+    inputState = inputToState(inputFile, mode)
     outputState = []
 
     if mode is Mode.ENCRYPT:
@@ -95,7 +95,7 @@ def main(argv):
     stateToOutput(outputState, outputFile, mode)
 
 
-def inputToState(input):
+def inputToState(input, mode):
     """Takes the input file and stores its bytes as a list of 4x4 blocks of
        data."""
     inputBytes = []
@@ -121,6 +121,13 @@ def inputToState(input):
                 row.append(inputBytes[inputIndex])
                 inputIndex += 1
         state.append(block)
+
+    if mode is Mode.DECRYPT:
+        decryptState = []
+        for b in state:
+            newBlock = [list(x) for x in zip(b[0], b[1], b[2], b[3])]
+            decryptState.append(newBlock)
+        return decryptState
 
     return state
 
@@ -150,16 +157,30 @@ def stateToOutput(state, outputFile, mode):
     """Writes the resulting state to the output file"""
     # If decrypting, remove any additional padding
     if mode is Mode.DECRYPT:
+        print(state)
         totalLength = len(state) * 16
-        paddedBytes = 0
-        if totalLength % 16 != 0:
-            paddedBytes = state[len(state)-1][3][3]
+        paddedBytes = state[len(state)-1][3][3]
+
+        flatState = []
+        for block in state:
+            for row in block:
+                for byte in row:
+                    flatState.append(byte)
+        padCount = 0
+        for i in range(len(flatState) - 1, -1, -1):
+            if flatState[i] == paddedBytes:
+                padCount += 1
+            else:
+                break
+        if(padCount != paddedBytes):
+            paddedBytes = 0
+
         outputLength = totalLength - paddedBytes
         currentPos = 0
         for b in state:
-            block = [list(x) for x in zip(b[0], b[1], b[2], b[3])]
-            for row in block:
+            for row in b:
                 for byte in row:
+                    print(currentPos)
                     if currentPos < outputLength:
                         outputFile.write(byte.to_bytes(1, "big"))
                         currentPos += 1
