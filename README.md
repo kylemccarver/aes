@@ -21,6 +21,7 @@ Loop through Nr - 1 rounds (Nr = 10 if keysize is 128, 14 if keysize is 256) and
 * shiftRows() - shift each row in the state based on its position in the block
 * mixColumns() - for each column in the state, replace each byte with its value XOR'd with its corresponding value in a multiplication lookup table
 * addRoundKey() - XOR the state with the round key in the key schedule corresponding to the current round
+
 Now, outside the loop:
 * subBytes() one more time
 * shiftRows() one more time
@@ -35,6 +36,7 @@ Loop through Nr - 1 rounds (Nr = 10 if keysize is 128, 14 if keysize is 256) in 
 * subBytes() - substitute each byte using a different inverted table (SBOX_INV) from the encryption step
 * mixColumns() - for each column in the state, replace each byte with its value XOR'd with its corresponding value in a multiplication lookup table. The lookup tables used in this step are different than the ones in the encryption mode.
 * addRoundKey() - XOR the state with the round key in the key schedule corresponding to the current round
+
 Now, outside the loop:
 * shiftRows() one more time
 * subBytes() one more time
